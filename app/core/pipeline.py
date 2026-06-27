@@ -153,3 +153,61 @@ async def process_cv_background(
 
     result = await cv_screening_pipeline.ainvoke(initial_state)
     return result
+
+
+# ==========================================
+# [DEV MODE] Preview Pipeline - Tanpa DB Write
+# Menjalankan AI (read_file → extractor → evaluator) saja
+# Tidak menyimpan apapun ke database
+# ==========================================
+async def process_cv_preview(
+    kriteria_perusahaan: str,
+    threshold_skor: int,
+    cv_file_path: str,
+    cv_original_filename: str
+) -> dict:
+    """
+    [DEV MODE] Jalankan AI pipeline tanpa menyimpan ke DB.
+    Hanya menjalankan: read_file → extractor → evaluator
+    Return: dict hasil analisis AI langsung ke caller.
+    """
+    from app.core.nodes.read_file import read_file_node
+    from app.core.nodes.extractor import extractor_node
+    from app.core.nodes.evaluator import evaluate_node
+
+    state = {
+        "company_id": "preview",
+        "job_id": "preview",
+        "applicant_id": "preview",
+        "kriteria_perusahaan": kriteria_perusahaan,
+        "threshold_skor": threshold_skor,
+        "cv_file_path": cv_file_path,
+        "cv_original_filename": cv_original_filename,
+        "screening_status": "pending",
+        "retry_count": 0,
+        "extracted_skills": None,
+        "raw_evaluator_output": None,
+        "skor_kecocokan": None,
+        "label": None,
+        "laporan_analisis_markdown": None,
+        "cv_summary": None,
+        "kelebihan_utama": None,
+        "kekurangan_utama": None,
+        "soal_list": None,
+        "reviewer_status": None,
+        "reviewer_feedback": None,
+        "reviewer_skor": None,
+        "error_message": None,
+    }
+
+    # Jalankan node satu per satu tanpa menyentuh db_writer
+    state = await read_file_node(state)
+    if state.get("screening_status") == "error":
+        return state
+
+    state = await extractor_node(state)
+    if state.get("screening_status") == "error":
+        return state
+
+    state = await evaluate_node(state)
+    return state
