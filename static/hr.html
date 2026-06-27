@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HR Dashboard | CV AI Screener</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        .btn-sm {
+            padding: 0.5rem 1rem;
+            width: auto;
+            font-size: 0.9rem;
+        }
+        .nav-tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1rem;
+        }
+        .nav-tab {
+            background: transparent;
+            color: var(--text-muted);
+            border: none;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+        .nav-tab.active {
+            color: var(--primary);
+            border-bottom: 2px solid var(--primary);
+        }
+        ul.bullet-list {
+            list-style-type: none;
+            padding-left: 0;
+            margin: 0;
+        }
+        ul.bullet-list li::before {
+            content: "• ";
+            color: var(--primary);
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Auth Section -->
+        <div id="auth-section" style="max-width: 450px; margin: 4rem auto;">
+            <div class="glass-panel">
+                <div class="nav-tabs" style="margin-bottom: 1.5rem;">
+                    <button class="nav-tab active" id="tab-login" onclick="switchAuth('login')" style="flex: 1;">Login</button>
+                    <button class="nav-tab" id="tab-register" onclick="switchAuth('register')" style="flex: 1;">Register</button>
+                </div>
+
+                <!-- Login Form -->
+                <form id="login-form">
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="login-email" required placeholder="admin@techcorp.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="login-password" required placeholder="••••••••">
+                    </div>
+                    <button type="submit" id="login-btn">Login</button>
+                    <p id="login-err" style="color: var(--danger); margin-top: 1rem; text-align: center; font-size: 0.9rem;"></p>
+                </form>
+
+                <!-- Register Form -->
+                <form id="register-form" class="hidden">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="form-group">
+                            <label>Company Name</label>
+                            <input type="text" id="reg-company" required placeholder="Tech Corp">
+                        </div>
+                        <div class="form-group">
+                            <label>Company Slug</label>
+                            <input type="text" id="reg-slug" required placeholder="tech-corp">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Your Name</label>
+                        <input type="text" id="reg-name" required placeholder="John Doe">
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="reg-email" required placeholder="john@techcorp.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="reg-password" required placeholder="••••••••">
+                    </div>
+                    <button type="submit" id="register-btn">Register</button>
+                    <p id="reg-err" style="color: var(--danger); margin-top: 1rem; text-align: center; font-size: 0.9rem;"></p>
+                </form>
+            </div>
+        </div>
+
+        <!-- Dashboard Section -->
+        <div id="dashboard-section" class="hidden">
+            <div class="dashboard-header">
+                <div>
+                    <h1 style="font-size: 2rem; background: linear-gradient(to right, #818cf8, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">HR Workspace</h1>
+                    <p style="color: var(--text-muted);">Manage jobs and view AI-screened candidates.</p>
+                </div>
+                <button onclick="logout()" class="btn-sm" style="background: var(--danger);">Logout</button>
+            </div>
+
+            <div class="glass-panel">
+                <div class="nav-tabs">
+                    <div class="nav-tab active" onclick="showTab('jobs-tab')">Manage Jobs</div>
+                    <button onclick="openCreateJobModal()" class="btn-sm">+ Create New Job</button>
+                </div>
+
+                <div id="jobs-list" class="jobs-grid">
+                    <!-- Jobs will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Job Modal -->
+    <div id="create-job-modal" class="modal-backdrop">
+        <div class="modal-content" style="max-width: 600px; max-height: 90vh; overflow-y: auto;">
+            <h2>Post a New Job</h2>
+            <p style="color: var(--text-muted); margin-bottom: 1.5rem;">AI will use the requirements below to evaluate CVs.</p>
+            <form id="create-job-form">
+                <div class="form-group">
+                    <label>Job Title</label>
+                    <input type="text" id="job-title" required placeholder="e.g. Senior Frontend Engineer">
+                </div>
+                <div class="form-group">
+                    <label>Slug (URL Identifier)</label>
+                    <input type="text" id="job-slug" required placeholder="e.g. sr-frontend-engineer-2026">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label>Department</label>
+                        <input type="text" id="job-dept" required placeholder="Engineering">
+                    </div>
+                    <div class="form-group">
+                        <label>Location</label>
+                        <input type="text" id="job-loc" required placeholder="Jakarta, ID">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Experience Level</label>
+                    <select id="job-exp" required>
+                        <option value="entry">Entry Level</option>
+                        <option value="mid">Mid Level</option>
+                        <option value="senior">Senior Level</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Job Description</label>
+                    <textarea id="job-desc" rows="3" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>AI Screening Requirements (Crucial)</label>
+                    <textarea id="job-req" rows="4" required placeholder="List the specific skills and requirements the AI should look for in the CVs..."></textarea>
+                </div>
+                <button type="submit">Create Job</button>
+                <button type="button" onclick="closeCreateJobModal()" style="background: transparent; color: var(--text-muted); margin-top: 1rem;">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- View Applicants Modal -->
+    <div id="applicants-modal" class="modal-backdrop">
+        <div class="modal-content" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">
+            <h2 id="app-modal-title">Applicants</h2>
+            <div class="table-container">
+                <table id="applicants-table">
+                    <thead>
+                        <tr>
+                            <th>Candidate</th>
+                            <th>AI Score</th>
+                            <th>Summary &amp; Strengths</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="applicants-tbody">
+                        <!-- Rows injected via JS -->
+                    </tbody>
+                </table>
+            </div>
+            <button type="button" onclick="closeApplicantsModal()" style="margin-top: 2rem; width: auto; padding: 0.5rem 2rem;">Close</button>
+        </div>
+    </div>
+
+    <!-- Questions Modal -->
+    <div id="questions-modal" class="modal-backdrop">
+        <div class="modal-content" style="max-width: 780px; max-height: 90vh; overflow-y: auto;">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem;">
+                <div>
+                    <h2 id="q-modal-title">AI Generated Questions</h2>
+                    <p style="color:var(--text-muted); font-size:0.9rem; margin-top:4px;" id="q-modal-sub"></p>
+                </div>
+                <div style="display:flex; align-items:center; gap: 1rem;">
+                    <button type="button" id="btn-regenerate" class="btn-sm" style="background:rgba(239,68,68,0.1); color:var(--danger); border:1px solid rgba(239,68,68,0.2); font-size:0.8rem; display:none;">
+                        🔄 Regenerate
+                    </button>
+                    <button type="button" onclick="closeQuestionsModal()" class="btn-sm" style="background:transparent; color:var(--text-muted); font-size:1.2rem; border:none; padding:0;">✕</button>
+                </div>
+            </div>
+            <div id="q-loading" style="text-align:center; padding:3rem; color:var(--text-muted);">
+                <div class="spinner" style="margin: 0 auto 1rem; width:32px; height:32px;"></div>
+                <p>AI is generating personalized questions...<br><small>This may take 30-60 seconds</small></p>
+            </div>
+            <div id="q-list" style="display:none;"></div>
+            <div id="q-error" style="display:none; color:var(--danger); padding:1rem; background:rgba(239,68,68,0.1); border-radius:8px; margin-top:1rem;"></div>
+            <button type="button" onclick="closeQuestionsModal()" style="margin-top: 2rem; width: auto; padding: 0.5rem 2rem;">Close</button>
+        </div>
+    </div>
+
+    <script>
+        let token = localStorage.getItem('hr_token');
+
+        // Toggle Auth Forms
+        function switchAuth(mode) {
+            document.getElementById('login-err').innerText = '';
+            document.getElementById('reg-err').innerText = '';
+            
+            if(mode === 'login') {
+                document.getElementById('tab-login').classList.add('active');
+                document.getElementById('tab-register').classList.remove('active');
+                document.getElementById('login-form').classList.remove('hidden');
+                document.getElementById('register-form').classList.add('hidden');
+            } else {
+                document.getElementById('tab-register').classList.add('active');
+                document.getElementById('tab-login').classList.remove('active');
+                document.getElementById('register-form').classList.remove('hidden');
+                document.getElementById('login-form').classList.add('hidden');
+            }
+        }
+
+        // Check auth on load
+        if (token) {
+            document.getElementById('auth-section').classList.add('hidden');
+            document.getElementById('dashboard-section').classList.remove('hidden');
+            fetchJobs();
+        }
+
+        // Register
+        document.getElementById('register-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                company_name: document.getElementById('reg-company').value,
+                company_slug: document.getElementById('reg-slug').value,
+                name: document.getElementById('reg-name').value,
+                email: document.getElementById('reg-email').value,
+                password: document.getElementById('reg-password').value
+            };
+            
+            try {
+                const res = await fetch('/api/v1/auth/register', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                
+                if (!res.ok) throw new Error(data.detail || "Registration failed");
+                
+                // If success, auto fill login and switch to login
+                document.getElementById('login-email').value = payload.email;
+                document.getElementById('login-password').value = payload.password;
+                switchAuth('login');
+                alert("Registrasi sukses! Silakan klik Login.");
+            } catch (err) {
+                document.getElementById('reg-err').innerText = err.message;
+            }
+        });
+
+        // Login
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const errEl = document.getElementById('login-err');
+            
+            try {
+                const formData = new URLSearchParams();
+                formData.append('username', email);
+                formData.append('password', password);
+
+                const res = await fetch('/api/v1/auth/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: formData
+                });
+                
+                let data;
+                try {
+                    data = await res.json();
+                } catch(e) {
+                    throw new Error("Server error (not JSON): " + res.status);
+                }
+                
+                if (!res.ok) throw new Error(data.detail || "Login failed");
+                
+                token = data.access_token;
+                localStorage.setItem('hr_token', token);
+                
+                document.getElementById('auth-section').classList.add('hidden');
+                document.getElementById('dashboard-section').classList.remove('hidden');
+                fetchJobs();
+            } catch (err) {
+                errEl.innerText = err.message;
+            }
+        });
+
+        function logout() {
+            localStorage.removeItem('hr_token');
+            location.reload();
+        }
+
+        // Fetch Jobs
+        async function fetchJobs() {
+            try {
+                const res = await fetch('/api/v1/jobs/', {
+                    headers: {'Authorization': `Bearer ${token}`}
+                });
+                
+                if (res.status === 401) return logout();
+                
+                const jobs = await res.json();
+                const container = document.getElementById('jobs-list');
+                container.innerHTML = '';
+                
+                jobs.forEach(job => {
+                    const card = document.createElement('div');
+                    card.className = 'glass-panel job-card';
+                    card.innerHTML = `
+                        <h3>${job.title}</h3>
+                        <div style="margin-bottom: 1rem;">
+                            <span class="job-badge">${job.department}</span>
+                            <span class="job-badge">${job.status}</span>
+                        </div>
+                        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">Slug: ${job.slug}</p>
+                        <button onclick="viewApplicants('${job.id}', '${job.title}')" style="background: rgba(99, 102, 241, 0.2); color: #818cf8;">View Applicants</button>
+                    `;
+                    container.appendChild(card);
+                });
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        // Create Job
+        function openCreateJobModal() { document.getElementById('create-job-modal').classList.add('active'); }
+        function closeCreateJobModal() { document.getElementById('create-job-modal').classList.remove('active'); }
+
+        document.getElementById('create-job-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const payload = {
+                title: document.getElementById('job-title').value,
+                slug: document.getElementById('job-slug').value,
+                department: document.getElementById('job-dept').value,
+                location: document.getElementById('job-loc').value,
+                experience_level: document.getElementById('job-exp').value,
+                description: document.getElementById('job-desc').value,
+                requirements: document.getElementById('job-req').value
+            };
+
+            try {
+                const res = await fetch('/api/v1/jobs/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!res.ok) throw new Error("Failed to create job");
+                
+                closeCreateJobModal();
+                document.getElementById('create-job-form').reset();
+                fetchJobs();
+            } catch (err) {
+                alert(err.message);
+            }
+        });
+
+        // View Applicants
+        async function viewApplicants(jobId, jobTitle) {
+            document.getElementById('app-modal-title').innerText = `Applicants for ${jobTitle}`;
+            document.getElementById('applicants-modal').classList.add('active');
+            
+            const tbody = document.getElementById('applicants-tbody');
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading...</td></tr>';
+            
+            try {
+                const res = await fetch(`/api/v1/jobs/${jobId}/applicants`, {
+                    headers: {'Authorization': `Bearer ${token}`}
+                });
+                
+                if (!res.ok) {
+                    throw new Error("Failed to fetch applicants from server");
+                }
+                
+                const apps = await res.json();
+                
+                tbody.innerHTML = '';
+                if (apps.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: var(--text-muted);">No applicants yet.</td></tr>';
+                    return;
+                }
+                
+                apps.forEach(app => {
+                    const score = app.overall_score || 0;
+                    let scoreClass = 'score-low';
+                    if (score >= 75) scoreClass = 'score-high';
+                    else if (score >= 50) scoreClass = 'score-mid';
+                    
+                    let strengthsHtml = '';
+                    try {
+                        const strengths = JSON.parse(app.strengths || '[]');
+                        strengthsHtml = `<ul class="bullet-list">${strengths.map(s => `<li>${s}</li>`).join('')}</ul>`;
+                    } catch(e) {}
+
+                    // Tombol Generate Questions hanya muncul jika skor >= 60 dan status analysis_completed
+                    const canGenerate = score >= 60 && app.status === 'analysis_completed';
+                    // Label bergantung pada apakah soal sudah pernah digenerate (bisa cek dari exam_status jika dikirim backend, tapi untuk sekarang samakan saja)
+                    const actionBtn = canGenerate
+                        ? `<button onclick="generateAndViewQuestions('${jobId}', '${app.id}', '${app.name}')"
+                                style="background: rgba(139,92,246,0.2); color: #a78bfa; font-size:0.8rem; padding:6px 12px; border:none; border-radius:6px; cursor:pointer;">
+                                ✨ View/Generate Questions
+                            </button>`
+                        : `<span style="font-size:0.8rem; color:var(--text-muted);">—</span>`;
+
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>
+                                <strong>${app.name}</strong><br>
+                                <span style="font-size: 0.85rem; color: var(--text-muted);">${app.email}</span>
+                            </td>
+                            <td><span class="score-badge ${scoreClass}">${score}/100</span></td>
+                            <td style="font-size: 0.9rem;">
+                                <p style="margin-bottom: 0.5rem; color: var(--text-muted);">${app.cv_summary || 'Analysis pending...'}</p>
+                                ${strengthsHtml}
+                            </td>
+                            <td><span style="font-size: 0.85rem; text-transform: uppercase;">${app.status.replace('_', ' ')}</span></td>
+                            <td>${actionBtn}</td>
+                        </tr>
+                    `;
+                });
+            } catch (err) {
+                console.error(err);
+                tbody.innerHTML = `<tr><td colspan="5" style="color:var(--danger);">Error loading applicants: ${err.message}</td></tr>`;
+            }
+        }
+        
+        function closeApplicantsModal() { document.getElementById('applicants-modal').classList.remove('active'); }
+
+        // ===== QUESTIONS MODAL =====
+        function closeQuestionsModal() {
+            document.getElementById('questions-modal').classList.remove('active');
+        }
+
+        async function generateAndViewQuestions(jobId, applicantId, candidateName) {
+            document.getElementById('q-modal-title').innerText = `AI Questions for ${candidateName}`;
+            document.getElementById('q-modal-sub').innerText = 'Loading...';
+            document.getElementById('q-loading').style.display = 'block';
+            document.getElementById('q-list').style.display = 'none';
+            document.getElementById('q-error').style.display = 'none';
+            document.getElementById('btn-regenerate').style.display = 'none';
+            document.getElementById('questions-modal').classList.add('active');
+
+            try {
+                // Step 1: Cek apakah soal sudah ada di database
+                const qRes = await fetch(`/api/v1/jobs/${jobId}/applicants/${applicantId}/questions`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (qRes.ok) {
+                    // Soal sudah ada, tampilkan langsung
+                    const questions = await qRes.json();
+                    renderQuestions(questions, candidateName);
+                    // Pasang fungsi pada tombol Regenerate
+                    const btnRegen = document.getElementById('btn-regenerate');
+                    btnRegen.style.display = 'block';
+                    btnRegen.onclick = () => forceRegenerateQuestions(jobId, applicantId, candidateName);
+                    return;
+                }
+                
+                if (qRes.status !== 404) {
+                    throw new Error("Failed to fetch existing questions");
+                }
+
+                // Jika 404, jalankan trigger generate baru
+                await forceRegenerateQuestions(jobId, applicantId, candidateName);
+
+            } catch (err) {
+                showQError(err.message);
+            }
+        }
+
+        async function forceRegenerateQuestions(jobId, applicantId, candidateName) {
+            document.getElementById('q-modal-sub').innerText = 'Generating personalized exam questions via AI pipeline...';
+            document.getElementById('q-loading').style.display = 'block';
+            document.getElementById('q-list').style.display = 'none';
+            document.getElementById('q-error').style.display = 'none';
+            document.getElementById('btn-regenerate').style.display = 'none';
+
+            try {
+                // Trigger generation API
+                const genRes = await fetch(`/api/v1/jobs/${jobId}/applicants/${applicantId}/generate-questions`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!genRes.ok) {
+                    const err = await genRes.json();
+                    throw new Error(err.detail || 'Failed to trigger generation');
+                }
+
+                // Polling for questions (max 15 attempts x 4 seconds = 60 seconds)
+                let questions = null;
+                for (let i = 0; i < 15; i++) {
+                    await new Promise(r => setTimeout(r, 4000));
+                    const checkRes = await fetch(`/api/v1/jobs/${jobId}/applicants/${applicantId}/questions`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (checkRes.ok) {
+                        questions = await checkRes.json();
+                        break;
+                    }
+                }
+
+                if (!questions || questions.length === 0) {
+                    throw new Error('Questions are still being generated. Please close this and try again in a minute.');
+                }
+
+                renderQuestions(questions, candidateName);
+                
+                const btnRegen = document.getElementById('btn-regenerate');
+                btnRegen.style.display = 'block';
+                btnRegen.onclick = () => forceRegenerateQuestions(jobId, applicantId, candidateName);
+
+            } catch (err) {
+                showQError(err.message);
+            }
+        }
+
+        function showQError(msg) {
+            document.getElementById('q-loading').style.display = 'none';
+            const errEl = document.getElementById('q-error');
+            errEl.style.display = 'block';
+            errEl.innerText = '❌ ' + msg;
+        }
+
+        function renderQuestions(questions, candidateName) {
+            document.getElementById('q-modal-sub').innerText =
+                `${questions.length} questions generated — 14 MCQ + 6 Essay | Candidate: ${candidateName}`;
+            document.getElementById('q-loading').style.display = 'none';
+
+            const container = document.getElementById('q-list');
+            container.style.display = 'block';
+            container.innerHTML = '';
+
+            questions.forEach((q, idx) => {
+                const isMcq = q.tipe === 'mcq';
+                const typeLabel = isMcq ? '🔵 MCQ' : '🟡 Essay';
+                const typeBg = isMcq
+                    ? 'rgba(99,102,241,0.15); color:#818cf8;'
+                    : 'rgba(245,158,11,0.15); color:#f59e0b;';
+
+                let optionsHtml = '';
+                if (isMcq && q.opsi) {
+                    for (const [key, val] of Object.entries(q.opsi)) {
+                        const isCorrect = key === q.kunci_jawaban;
+                        const style = isCorrect
+                            ? 'background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.4); color:#10b981;'
+                            : 'background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08);';
+                        optionsHtml += `
+                            <div style="display:flex; gap:8px; padding:7px 10px; border-radius:7px; margin-bottom:5px; font-size:0.83rem; ${style}">
+                                <span style="font-weight:700; flex-shrink:0;">${key}.</span>
+                                <span>${val}</span>
+                                ${isCorrect ? '<span style="margin-left:auto;">✅ Answer</span>' : ''}
+                            </div>`;
+                    }
+                }
+
+                container.innerHTML += `
+                <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07);
+                            border-radius:10px; padding:1.2rem; margin-bottom:10px;">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+                        <span style="width:26px; height:26px; border-radius:50%; display:flex; align-items:center;
+                                     justify-content:center; font-size:0.72rem; font-weight:700;
+                                     background:${typeBg}">${idx + 1}</span>
+                        <span style="font-size:0.7rem; font-weight:700; text-transform:uppercase; background:${typeBg}
+                                     padding:2px 8px; border-radius:4px;">${typeLabel}</span>
+                        <span style="margin-left:auto; font-size:0.7rem; padding:2px 8px;
+                                     background:rgba(139,92,246,0.1); color:#a78bfa; border-radius:4px;">${q.kategori}</span>
+                    </div>
+                    <p style="font-size:0.88rem; line-height:1.6; margin-bottom:${isMcq ? '12px' : '0'}">${q.pertanyaan}</p>
+                    ${optionsHtml}
+                </div>`;
+            });
+        }
+    </script>
+</body>
+</html>

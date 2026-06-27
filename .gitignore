@@ -1,0 +1,23 @@
+# Virtual Environments
+myenv/
+.myenv/
+venv/
+env/
+
+# Environment Variables
+.env
+.env.*
+
+# Uploaded Files
+/uploads/
+
+# Python Standard
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# VS Code / IDE
+.vscode/
+.idea/

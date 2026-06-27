@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Career Portal | Apply Jobs</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Discover Your Next Career</h1>
+            <p>We use AI to match your unique skills with our best roles.</p>
+        </header>
+
+        <main id="jobs-container" class="jobs-grid">
+            <!-- Jobs will be loaded here -->
+            <p style="text-align:center; color: var(--text-muted); width: 100%;">Loading open positions...</p>
+        </main>
+    </div>
+
+    <!-- Apply Modal -->
+    <div id="apply-modal" class="modal-backdrop">
+        <div class="modal-content">
+            <h2 style="margin-bottom: 0.5rem;" id="modal-job-title">Apply for Job</h2>
+            <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Upload your CV in PDF format.</p>
+            
+            <form id="apply-form">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="apply-name" required placeholder="e.g. John Doe">
+                </div>
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <input type="email" id="apply-email" required placeholder="john@example.com">
+                </div>
+                <div class="form-group">
+                    <label>CV (PDF Only)</label>
+                    <input type="file" id="apply-cv" accept=".pdf" required>
+                </div>
+                <button type="submit" id="submit-btn">
+                    <span id="btn-text">Submit Application</span>
+                    <div id="btn-spinner" class="spinner hidden"></div>
+                </button>
+                <button type="button" id="cancel-btn" style="background: transparent; color: var(--text-muted); margin-top: 1rem;">Cancel</button>
+            </form>
+            
+            <div id="success-msg" class="hidden" style="margin-top: 1.5rem; text-align: center; color: var(--success);">
+                <h3>🎉 Application Received!</h3>
+                <p style="margin-top: 0.5rem; color: var(--text-muted);">Our AI is now analyzing your CV. We will be in touch soon.</p>
+                <button type="button" onclick="closeModal()" style="margin-top: 1rem;">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentJobId = '';
+
+        async function fetchJobs() {
+            try {
+                const res = await fetch('/api/v1/public/jobs');
+                const jobs = await res.json();
+                const container = document.getElementById('jobs-container');
+                container.innerHTML = '';
+                
+                if (jobs.length === 0) {
+                    container.innerHTML = '<p style="text-align:center; width: 100%;">No open positions at the moment.</p>';
+                    return;
+                }
+
+                jobs.forEach(job => {
+                    const card = document.createElement('div');
+                    card.className = 'glass-panel job-card';
+                    card.innerHTML = `
+                        <h3>${job.title}</h3>
+                        <div>
+                            <span class="job-badge">${job.department}</span>
+                            <span class="job-badge">${job.location}</span>
+                        </div>
+                        <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.95rem;">
+                            ${job.description.substring(0, 100)}...
+                        </p>
+                        <button onclick="openModal('${job.id}', '${job.title}')">Apply Now</button>
+                    `;
+                    container.appendChild(card);
+                });
+            } catch (err) {
+                console.error(err);
+                document.getElementById('jobs-container').innerHTML = '<p style="color: var(--danger); text-align:center;">Failed to load jobs.</p>';
+            }
+        }
+
+        function openModal(id, title) {
+            currentJobId = id;
+            document.getElementById('modal-job-title').innerText = `Apply for ${title}`;
+            document.getElementById('apply-form').reset();
+            document.getElementById('apply-form').classList.remove('hidden');
+            document.getElementById('success-msg').classList.add('hidden');
+            document.getElementById('apply-modal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('apply-modal').classList.remove('active');
+        }
+
+        document.getElementById('cancel-btn').addEventListener('click', closeModal);
+
+        document.getElementById('apply-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submit-btn');
+            const btnText = document.getElementById('btn-text');
+            const spinner = document.getElementById('btn-spinner');
+            
+            const fileInput = document.getElementById('apply-cv');
+            if (fileInput.files.length === 0) return alert('Please select a PDF file.');
+            
+            const formData = new FormData();
+            formData.append('cv_file', fileInput.files[0]);
+
+            btn.disabled = true;
+            btnText.innerText = 'Uploading...';
+            spinner.classList.remove('hidden');
+
+            try {
+                // Endpoint uses path param for id, and query params for name and email
+                const name = encodeURIComponent(document.getElementById('apply-name').value);
+                const email = encodeURIComponent(document.getElementById('apply-email').value);
+                const url = `/api/v1/public/${currentJobId}/apply?name=${name}&email=${email}`;
+                
+                const res = await fetch(url, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!res.ok) {
+                    const data = await res.json();
+                    throw new Error(data.detail || 'Failed to apply');
+                }
+                
+                document.getElementById('apply-form').classList.add('hidden');
+                document.getElementById('success-msg').classList.remove('hidden');
+                
+            } catch (err) {
+                alert('Error: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                btnText.innerText = 'Submit Application';
+                spinner.classList.add('hidden');
+            }
+        });
+
+        // Initialize
+        fetchJobs();
+    </script>
+</body>
+</html>
